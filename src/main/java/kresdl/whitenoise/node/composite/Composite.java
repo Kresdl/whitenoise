@@ -1,10 +1,13 @@
 package kresdl.whitenoise.node.composite;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -28,8 +31,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.swing.Box;
-import javax.swing.SwingUtilities;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
+import javax.swing.WindowConstants;
 import kresdl.gradienteditor.GradientEditor;
 import kresdl.utilities.Gradient;
 import kresdl.whitenoise.App;
@@ -48,6 +55,49 @@ import kresdl.whitenoise.socket.In;
 @SuppressWarnings("serial")
 public final class Composite extends Node implements View {
 
+    private Work work;
+    
+    public static class Progress extends JDialog implements PropertyChangeListener {
+
+        private static final JLabel LABEL = new JLabel("Saving...", SwingConstants.CENTER);
+
+        static Progress create() {
+            Progress p = new Progress();
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setPreferredSize(new Dimension(200, 200));
+            panel.add(LABEL, BorderLayout.CENTER);
+            p.setContentPane(panel);
+            p.setModal(true);
+            p.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+            p.setUndecorated(true);
+            p.setOpacity(0.75f);
+            p.pack();
+            return p;
+        }
+        
+        private Progress() {
+            super();
+        }
+
+        void showit(Output owner) {
+            LABEL.setText("Saving...");
+            setLocationRelativeTo(owner);
+            setVisible(true);
+        }
+
+        void hideit() {
+            setVisible(false);
+        }
+        
+        @Override
+        public void propertyChange(PropertyChangeEvent e) {
+            int progress = (int) e.getNewValue();
+            LABEL.setText("Saving... " + (int) progress + "%");                
+        }                    
+    }
+
+    private static final Progress PROGRESS = Progress.create();
+
     private class Work extends SwingWorker<Void, Void> {
         private int res;
         
@@ -64,10 +114,16 @@ public final class Composite extends Node implements View {
             renderImage();
             return null;
         }
+        
+        public void updateProgress(double progress) {
+            this.setProgress((int) (100 * progress));
+        }
     }
     
-    public Work getWork(int res) {
-        return new Work(res);
+    public void doWork(int res) {
+        work = new Work(res);
+        work.addPropertyChangeListener(PROGRESS);
+        Main.getTaskManager().execute(work);
     }
     
     public static class Info extends Node.Info implements Serializable {
@@ -86,12 +142,7 @@ public final class Composite extends Node implements View {
 
     private final Output output;
     private final Controls ctrl;
-    private SwingWorker<?, ?> worker;
     
-    public void setWorker(SwingWorker<?, ?> worker) {
-        this.worker = worker;
-    }
-
     public static Composite create(int x, int y, Main main, Gradient g, double distribution, Mode mode) {
         Composite n = new Composite(x, y, main, g, distribution, mode);
         n.init();
@@ -160,7 +211,7 @@ public final class Composite extends Node implements View {
         Main.getTaskManager().distribute(tasks);
         try (OutputStream s = Files.newOutputStream(d)) {
             ImageIO.write(img, Output.getFormat(), s);
-            worker.    output.getProgress().advance(100.0d / Perlin.getRes());
+            work.updateProgress((double) z / Perlin.getRes());//   output.getProgress().advance(100.0d / Perlin.getRes());
         } finally {
             img.flush();
         }

@@ -371,51 +371,10 @@ public final class Output extends XPanel {
 
                         int r = Integer.valueOf(g1.getActionCommand());
                         lock();
-                        Main.getTaskManager().execute(node.getWork(r));
-                        PROGRESS.showit(Output.this);
+                        node.doWork(r);
                     }
                 }
             }
-        }
-    }
-
-    public static class Progress extends JDialog {
-
-        private static double progress = 0;
-        private static final JLabel LABEL = new JLabel("Saving...", SwingConstants.CENTER);
-
-        static Progress create() {
-            Progress p = new Progress();
-            JPanel panel = new JPanel(new BorderLayout());
-            panel.setPreferredSize(new Dimension(200, 200));
-            panel.add(LABEL, BorderLayout.CENTER);
-            p.setContentPane(panel);
-            p.setModal(true);
-            p.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-            p.setUndecorated(true);
-            p.setOpacity(0.75f);
-            p.pack();
-            return p;
-        }
-
-        private Progress() {
-            super();
-        }
-
-        public void advance(double step) {
-            progress += step;
-            LABEL.setText("Saving... " + (int) progress + "%");
-        }
-
-        void showit(Output owner) {
-            LABEL.setText("Saving...");
-            setLocationRelativeTo(owner);
-            setVisible(true);
-        }
-
-        void hideit() {
-            progress = 0;
-            setVisible(false);
         }
     }
 
@@ -435,7 +394,6 @@ public final class Output extends XPanel {
     private final AbstractAction saveImage = new SaveImage(),
             saveTree = new SaveTree(),
             saveCube = new SaveCube();
-    private static final Progress PROGRESS = Progress.create();
 
     public Output(Composite node, Mode mode) {
         super(PRE, PRE, BufferedImage.TYPE_3BYTE_BGR);
@@ -523,10 +481,6 @@ public final class Output extends XPanel {
 
     public static String getArchiver() {
         return archiver;
-    }
-
-    public Progress getProgress() {
-        return PROGRESS;
     }
 
     private void buildNormals(MouseEvent e) {
