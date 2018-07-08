@@ -251,9 +251,7 @@ public final class Output extends XPanel {
                             node.saveImage();
                             Perlin.setRes(PRE + 1);
                             node.renderImage();
-                            SwingUtilities.invokeLater(PROGRESS::hideit);
                         });
-                        PROGRESS.showit(Output.this);
                     }
                 }
             }
@@ -278,9 +276,7 @@ public final class Output extends XPanel {
                     Main.getTaskManager().execute(() -> {
                         node.saveTree(file);
                         unlock();
-                        SwingUtilities.invokeLater(PROGRESS::hideit);
                     });
-                    PROGRESS.showit(Output.this);
                 }
             }
         }

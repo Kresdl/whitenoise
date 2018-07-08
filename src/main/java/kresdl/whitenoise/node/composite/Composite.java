@@ -211,7 +211,7 @@ public final class Composite extends Node implements View {
         Main.getTaskManager().distribute(tasks);
         try (OutputStream s = Files.newOutputStream(d)) {
             ImageIO.write(img, Output.getFormat(), s);
-            work.updateProgress((double) z / Perlin.getRes());//   output.getProgress().advance(100.0d / Perlin.getRes());
+            work.updateProgress((double) z / Perlin.getRes());
         } finally {
             img.flush();
         }
