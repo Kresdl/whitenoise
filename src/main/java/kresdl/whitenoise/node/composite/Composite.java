@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import kresdl.gradienteditor.GradientEditor;
 import kresdl.utilities.Gradient;
 import kresdl.whitenoise.App;
@@ -40,12 +41,35 @@ import kresdl.whitenoise.node.Node;
 import kresdl.whitenoise.node.Transform;
 import kresdl.whitenoise.node.View;
 import kresdl.whitenoise.node.composite.Output.Mode;
+import static kresdl.whitenoise.node.composite.Output.PRE;
 import kresdl.whitenoise.node.perlin.Perlin;
 import kresdl.whitenoise.socket.In;
 
 @SuppressWarnings("serial")
 public final class Composite extends Node implements View {
 
+    private class Work extends SwingWorker<Void, Void> {
+        private int res;
+        
+        private Work(int res) {
+            this.res = res;
+        }
+        
+        @Override
+        public Void doInBackground() {
+            Perlin.setRes(res);
+            emptyDown();
+            saveCube();
+            Perlin.setRes(PRE + 1);
+            renderImage();
+            return null;
+        }
+    }
+    
+    public Work getWork(int res) {
+        return new Work(res);
+    }
+    
     public static class Info extends Node.Info implements Serializable {
 
         public Gradient g;
@@ -62,6 +86,11 @@ public final class Composite extends Node implements View {
 
     private final Output output;
     private final Controls ctrl;
+    private SwingWorker<?, ?> worker;
+    
+    public void setWorker(SwingWorker<?, ?> worker) {
+        this.worker = worker;
+    }
 
     public static Composite create(int x, int y, Main main, Gradient g, double distribution, Mode mode) {
         Composite n = new Composite(x, y, main, g, distribution, mode);
@@ -131,9 +160,7 @@ public final class Composite extends Node implements View {
         Main.getTaskManager().distribute(tasks);
         try (OutputStream s = Files.newOutputStream(d)) {
             ImageIO.write(img, Output.getFormat(), s);
-            SwingUtilities.invokeLater(() -> {
-                output.getProgress().advance(100.0d / Perlin.getRes());
-            });
+            worker.    output.getProgress().advance(100.0d / Perlin.getRes());
         } finally {
             img.flush();
         }

@@ -30,6 +30,7 @@ import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -50,7 +51,7 @@ public final class Output extends XPanel {
     public static enum Mode {
         BW, NORMAL, COLOR, BUMP, COLBUMP;
     }
-
+    
     class Task implements Runnable {
 
         private final int i;
@@ -370,14 +371,7 @@ public final class Output extends XPanel {
 
                         int r = Integer.valueOf(g1.getActionCommand());
                         lock();
-                        Main.getTaskManager().execute(() -> {
-                            Perlin.setRes(r);
-                            node.emptyDown();
-                            node.saveCube();
-                            Perlin.setRes(PRE + 1);
-                            node.renderImage();
-                            SwingUtilities.invokeLater(PROGRESS::hideit);
-                        });
+                        Main.getTaskManager().execute(node.getWork(r));
                         PROGRESS.showit(Output.this);
                     }
                 }
