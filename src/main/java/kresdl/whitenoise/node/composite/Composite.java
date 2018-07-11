@@ -1,5 +1,6 @@
 package kresdl.whitenoise.node.composite;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -32,10 +33,12 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
+import javax.swing.border.Border;
 import kresdl.gradienteditor.GradientEditor;
 import kresdl.utilities.Gradient;
 import kresdl.whitenoise.App;
@@ -47,7 +50,6 @@ import kresdl.whitenoise.node.Node;
 import kresdl.whitenoise.node.Transform;
 import kresdl.whitenoise.node.View;
 import kresdl.whitenoise.node.composite.Output.Mode;
-import kresdl.whitenoise.node.composite.Output.Save.Task;
 import kresdl.whitenoise.node.perlin.Perlin;
 import kresdl.whitenoise.socket.In;
 
@@ -60,16 +62,23 @@ public final class Composite extends Node implements View {
 
         private Progress() {
             super();
-            JPanel panel = new JPanel(new GridBagLayout());         
-            panel.setPreferredSize(new Dimension(200, 200));
+            JPanel b = new JPanel(new BorderLayout());
+            b.setPreferredSize(new Dimension(200, 200));
+            JLabel lb = new JLabel("Saving...");
+            lb.setPreferredSize(new Dimension(200, 32));
+            lb.setHorizontalAlignment(JLabel.CENTER);
+            lb.setVerticalAlignment(JLabel.BOTTOM);
+            b.add(lb, BorderLayout.PAGE_START);     
+            JPanel p = new JPanel(new GridBagLayout());         
             bar.setPreferredSize(new Dimension(150, 16));
             bar.setMinimum(0);
             bar.setMaximum(100);
             GridBagConstraints c = new GridBagConstraints();
             c.fill = GridBagConstraints.NONE;
             c.anchor= GridBagConstraints.CENTER;
-            panel.add(bar, c);
-            setContentPane(panel);
+            p.add(bar, c);
+            b.add(p, BorderLayout.CENTER);
+            setContentPane(b);
             setModal(true);
             setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
             setUndecorated(true);
