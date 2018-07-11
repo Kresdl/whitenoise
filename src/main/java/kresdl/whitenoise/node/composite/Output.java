@@ -1,6 +1,5 @@
 package kresdl.whitenoise.node.composite;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -19,7 +18,6 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -28,10 +26,6 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
-import javax.swing.WindowConstants;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import kresdl.geometry.Vec;
@@ -239,16 +233,18 @@ public final class Output extends XPanel {
                     JFileChooser f = new JFileChooser();
                     f.setDialogTitle("Save image");
                     if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
-                        file = f.getSelectedFile();
-                        format = g2.getActionCommand().toLowerCase();
-                        file = file.getName().matches("[^.]*") ? new File(file.getAbsolutePath() + "." + format) : file;
+                        final File file = f.getSelectedFile();
+                        final String format = g2.getActionCommand().toLowerCase();
+                        if (file.getName().matches("[^.]*")) {
+                            file.renameTo(new File(file.getAbsolutePath() + "." + format));
+                        }
 
                         int r = Integer.valueOf(g1.getActionCommand());
                         lock();
                         Main.getTaskManager().execute(() -> {
                             Perlin.setRes(r + 1);
                             node.emptyDown();
-                            node.saveImage();
+                            node.saveImage(file, format);
                             Perlin.setRes(PRE + 1);
                             node.renderImage();
                         });
@@ -353,7 +349,7 @@ public final class Output extends XPanel {
                     JFileChooser f = new JFileChooser();
                     f.setDialogTitle("Texture archive");
 
-                    archiver = g3.getActionCommand().toLowerCase();
+                    String archiver = g3.getActionCommand().toLowerCase();
                     FileFilter filter = new FileNameExtensionFilter(
                             archiver.substring(0, 1).toUpperCase() + archiver.substring(1) + "-file",
                             archiver
@@ -361,13 +357,14 @@ public final class Output extends XPanel {
                     f.setFileFilter(filter);
 
                     if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
-                        file = f.getSelectedFile();
-                        format = g2.getActionCommand().toLowerCase();
-                        file = file.getName().matches("[^.]*") ? new File(file.getAbsolutePath() + "." + archiver) : file;
+                        File file = f.getSelectedFile();
+                        String format = g2.getActionCommand().toLowerCase();
+                        if (file.getName().matches("[^.]*")) {
+                            file.renameTo(new File(file.getAbsolutePath() + "." + archiver));
+                        }
 
-                        int r = Integer.valueOf(g1.getActionCommand());
-                        lock();
-                        node.doWork(r);
+                        int res = Integer.valueOf(g1.getActionCommand());
+                        node.saveCube(res, file, format, archiver);
                     }
                 }
             }
@@ -381,8 +378,6 @@ public final class Output extends XPanel {
     private final Composite node;
     private static final Vec[] NRM_BUFFER = new Vec[PRE * PRE];
     private boolean lightMove, buildNormals;
-    private static File file;
-    private static String format, archiver;
     private Mode mode = Mode.BW;
     private Point lgt = new Point();
     private byte[] dst;
@@ -465,18 +460,6 @@ public final class Output extends XPanel {
 
     Mode getMode() {
         return mode;
-    }
-
-    public static File getFile() {
-        return file;
-    }
-
-    public static String getFormat() {
-        return format;
-    }
-
-    public static String getArchiver() {
-        return archiver;
     }
 
     private void buildNormals(MouseEvent e) {

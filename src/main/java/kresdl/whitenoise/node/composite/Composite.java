@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.beans.PropertyChangeEvent;
@@ -32,9 +34,8 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
 import kresdl.gradienteditor.GradientEditor;
@@ -55,77 +56,79 @@ import kresdl.whitenoise.socket.In;
 @SuppressWarnings("serial")
 public final class Composite extends Node implements View {
 
-    private Work work;
-    
-    public static class Progress extends JDialog implements PropertyChangeListener {
+    public class Progress extends JDialog implements PropertyChangeListener {
 
-        private static final JLabel LABEL = new JLabel("Saving...", SwingConstants.CENTER);
+        private final JProgressBar bar = new JProgressBar();
 
-        static Progress create() {
-            Progress p = new Progress();
-            JPanel panel = new JPanel(new BorderLayout());
-            panel.setPreferredSize(new Dimension(200, 200));
-            panel.add(LABEL, BorderLayout.CENTER);
-            p.setContentPane(panel);
-            p.setModal(true);
-            p.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-            p.setUndecorated(true);
-            p.setOpacity(0.75f);
-            p.pack();
-            return p;
-        }
-        
         private Progress() {
             super();
+            JPanel panel = new JPanel(new GridBagLayout());         
+            panel.setPreferredSize(new Dimension(200, 200));
+            bar.setPreferredSize(new Dimension(150, 16));
+            bar.setMinimum(0);
+            bar.setMaximum(100);
+            GridBagConstraints c = new GridBagConstraints();
+            c.fill = GridBagConstraints.NONE;
+            c.anchor= GridBagConstraints.CENTER;
+            panel.add(bar, c);
+            setContentPane(panel);
+            setModal(true);
+            setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+            setUndecorated(true);
+            setOpacity(0.75f);
+            pack();
         }
 
-        void showit(Output owner) {
-            LABEL.setText("Saving...");
-            setLocationRelativeTo(owner);
-            setVisible(true);
-        }
-
-        void hideit() {
-            setVisible(false);
-        }
-        
         @Override
         public void propertyChange(PropertyChangeEvent e) {
-            int progress = (int) e.getNewValue();
-            LABEL.setText("Saving... " + (int) progress + "%");                
-        }                    
+            if (e.getPropertyName().equals("progress")) {
+                int progress = (int) e.getNewValue();
+                bar.setValue(progress);
+            } else {
+                SwingWorker.StateValue state = (SwingWorker.StateValue) e.getNewValue();
+                switch (state) {
+                    case STARTED:
+                        setLocationRelativeTo(output);
+                        setVisible(true);
+                        break;
+                    case DONE:
+                        setVisible(false);                                  
+                }
+            }
+        }
+    }
+    
+    private abstract class Work extends SwingWorker<Void, Void> {
+       void updateProgress(double progress) {
+            setProgress((int) (100 * progress));
+        }        
     }
 
-    private static final Progress PROGRESS = Progress.create();
+    private class CubeWork extends Work {
 
-    private class Work extends SwingWorker<Void, Void> {
-        private int res;
-        
-        private Work(int res) {
+        private final int res;
+        private final File file;
+        private final String format;
+        private final String archiver;
+
+        private CubeWork(int res, File file, String format, String archiver) {
             this.res = res;
+            this.file = file;
+            this.format = format;
+            this.archiver = archiver;
         }
-        
+
         @Override
         public Void doInBackground() {
             Perlin.setRes(res);
             emptyDown();
-            saveCube();
+            saveCube(file, format, archiver);
             Perlin.setRes(PRE + 1);
             renderImage();
             return null;
         }
-        
-        public void updateProgress(double progress) {
-            this.setProgress((int) (100 * progress));
-        }
-    }
-    
-    public void doWork(int res) {
-        work = new Work(res);
-        work.addPropertyChangeListener(PROGRESS);
-        Main.getTaskManager().execute(work);
-    }
-    
+     }
+
     public static class Info extends Node.Info implements Serializable {
 
         public Gradient g;
@@ -142,7 +145,8 @@ public final class Composite extends Node implements View {
 
     private final Output output;
     private final Controls ctrl;
-    
+    private static Work work;
+
     public static Composite create(int x, int y, Main main, Gradient g, double distribution, Mode mode) {
         Composite n = new Composite(x, y, main, g, distribution, mode);
         n.init();
@@ -166,6 +170,13 @@ public final class Composite extends Node implements View {
         updateEditorVisibility(mode);
     }
 
+    public void saveCube(int res, File file, String format, String archiver) {
+        work = new CubeWork(res, file, format, archiver);
+        work.addPropertyChangeListener(new Progress());
+        lock();
+        Main.getTaskManager().execute(work);
+    }
+ 
     final void updateEditorVisibility(Mode mode) {
         if ((mode == Mode.NORMAL) || (mode == Mode.BUMP) || (mode == Mode.BW)) {
             ctrl.setVisible(false);
@@ -182,14 +193,14 @@ public final class Composite extends Node implements View {
     }
 
     @Override
-    public void save() {
+    public void save(File file, String format) {
         int res = Perlin.getRes() - 1;
         BufferedImage img = new BufferedImage(res, res, BufferedImage.TYPE_3BYTE_BGR);
         byte[] dst = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
         output.build(dst);
         empty();
         try {
-            ImageIO.write(img, Output.getFormat(), Output.getFile());
+            ImageIO.write(img, format, file);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -198,7 +209,7 @@ public final class Composite extends Node implements View {
     }
 
     @Override
-    public void cubic(int z, Path d) throws IOException {
+    public void cubic(int z, Path d, String format) throws IOException {
         int r = Perlin.getRes();
         BufferedImage img = new BufferedImage(r, r, BufferedImage.TYPE_4BYTE_ABGR_PRE);
         byte[] data = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
@@ -210,7 +221,7 @@ public final class Composite extends Node implements View {
 
         Main.getTaskManager().distribute(tasks);
         try (OutputStream s = Files.newOutputStream(d)) {
-            ImageIO.write(img, Output.getFormat(), s);
+            ImageIO.write(img, format, s);
             work.updateProgress((double) z / Perlin.getRes());
         } finally {
             img.flush();
@@ -272,23 +283,24 @@ public final class Composite extends Node implements View {
         }
     }
 
-    void saveImage() {
-        getRoots(new HashSet<>()).stream().forEach(Perlin::save);
+    void saveImage(File file, String format) {
+        getRoots(new HashSet<>()).stream().forEach(p -> {
+            p.save(file, format);
+        });
     }
 
-    void saveCube() {
-        File f = Output.getFile();
+    void saveCube(File file, String format, String archiver) {
         try {
-            Files.deleteIfExists(f.toPath());
+            Files.deleteIfExists(file.toPath());
             Map<String, String> env = new HashMap<>();
             env.put("create", "true");
-            URI uri = URI.create("jar:" + f.toURI().toString());
+            URI uri = URI.create("jar:" + file.toURI().toString());
             try (FileSystem fs = FileSystems.newFileSystem(uri, env)) {
                 Set<Perlin> s = getRoots(new HashSet<>());
                 for (int z = 0; z < Perlin.getRes(); z++) {
-                    Path d = fs.getPath(String.format("/z%d.%s", z + 1, Output.getFormat()));
+                    Path d = fs.getPath(String.format("/z%d.%s", z + 1, format));
                     for (Perlin p : s) {
-                        p.cubic(z, d);
+                        p.cubic(z, d, format);
                     }
                 }
             }

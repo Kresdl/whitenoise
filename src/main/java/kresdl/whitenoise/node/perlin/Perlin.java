@@ -1,6 +1,7 @@
 package kresdl.whitenoise.node.perlin;
 
 import java.awt.Component;
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -57,23 +58,23 @@ public final class Perlin extends Node implements View {
     }
 
     @Override
-    public void save() {
+    public void save(File file, String format) {
         int r = getRes();
         double[] data = new double[r * r];
         noise.fill(data);
         In link = out.getLink();
         link.send(data);
-        link.getNode().save();
+        link.getNode().save(file, format);
     }
 
     @Override
-    public void cubic(int z, Path d) throws IOException {
+    public void cubic(int z, Path d, String format) throws IOException {
         int r = getRes();
         double[] data = new double[r * r];
         noise.fill(data, z);
         In link = out.getLink();
         link.send(data);
-        link.getNode().cubic(z, d);
+        link.getNode().cubic(z, d, format);
     }
 
     public static void setRes(int res) {

@@ -322,6 +322,7 @@ public final class Main extends JPanel {
         setLayout(null);
         setPreferredSize(new Dimension(App.SCROLLWIDTH, App.SCROLLHEIGHT));
         setBackground(App.BGCOLOR);
+        
         loadTree(getClass().getClassLoader().getResourceAsStream("tree.json"));
     }
 

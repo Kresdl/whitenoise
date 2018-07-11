@@ -9,6 +9,7 @@ import java.awt.Insets;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -360,9 +361,9 @@ public abstract class Node extends Container {
 
     public abstract void render();
 
-    public abstract void save();
+    public abstract void save(File file, String format);
 
-    public abstract void cubic(int z, Path d) throws IOException;
+    public abstract void cubic(int z, Path d, String Format) throws IOException;
 
     public abstract Info getInfo();    
 }
