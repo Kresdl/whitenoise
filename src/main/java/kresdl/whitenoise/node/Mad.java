@@ -10,7 +10,7 @@ import kresdl.whitenoise.socket.Out;
 @SuppressWarnings("serial")
 public final class Mad extends Modifier {
 
-    public static class Info extends Node.Info implements Serializable {
+    public static class Info extends Node.Info {
 
         Info(int x, int y) {
             super(x, y);

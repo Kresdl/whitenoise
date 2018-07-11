@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
+import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import kresdl.geometry.Vec;
@@ -45,7 +46,7 @@ public final class Output extends XPanel {
     public static enum Mode {
         BW, NORMAL, COLOR, BUMP, COLBUMP;
     }
-    
+            
     class Task implements Runnable {
 
         private final int i;
@@ -176,8 +177,49 @@ public final class Output extends XPanel {
             return Vec.nrm(new Vec(x - lgt.x, -128, lgt.y - y));
         }
     }
+    
+    static abstract class Save extends AbstractAction {
+        
+        static abstract class Task extends SwingWorker<Void, Void> {
+           protected final File file;
 
-    class SaveImage extends AbstractAction {
+           Task(File file) {
+               this.file = file;
+           }
+
+           void updateProgress(double progress) {
+                setProgress((int) (100 * progress));
+            }        
+        }
+        
+        Save(String name) {
+            super(name);
+        }
+    }
+
+    class SaveImage extends Save {
+
+        class Task extends Save.Task {
+
+            private final int res;
+            private final String format;
+
+            Task(int res, File file, String format) {
+                super(file);
+                this.res = res;
+                this.format = format;
+            }
+
+            @Override
+            public Void doInBackground() {
+                Perlin.setRes(res + 1);
+                node.emptyDown();
+                node.saveImage(file, format);
+                Perlin.setRes(PRE + 1);
+                node.renderImage();
+                return null;
+            }
+        }
 
         SaveImage() {
             super("Save Image");
@@ -233,28 +275,34 @@ public final class Output extends XPanel {
                     JFileChooser f = new JFileChooser();
                     f.setDialogTitle("Save image");
                     if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
+                        int res = Integer.valueOf(g1.getActionCommand());
                         final File file = f.getSelectedFile();
                         final String format = g2.getActionCommand().toLowerCase();
                         if (file.getName().matches("[^.]*")) {
                             file.renameTo(new File(file.getAbsolutePath() + "." + format));
                         }
-
-                        int r = Integer.valueOf(g1.getActionCommand());
-                        lock();
-                        Main.getTaskManager().execute(() -> {
-                            Perlin.setRes(r + 1);
-                            node.emptyDown();
-                            node.saveImage(file, format);
-                            Perlin.setRes(PRE + 1);
-                            node.renderImage();
-                        });
+                        node.run(new Task(res, file, format));
                     }
                 }
             }
         }
     }
 
-    class SaveTree extends AbstractAction {
+    class SaveTree extends Save {
+
+        class Task extends Save.Task {
+
+            Task(File file) {
+                super(file);
+            }
+
+            @Override
+            public Void doInBackground() {
+                node.saveTree(file);
+                unlock();
+                return null;
+            }
+        }
 
         SaveTree() {
             super("Save tree");
@@ -268,17 +316,37 @@ public final class Output extends XPanel {
                 f.setFileFilter(new FileNameExtensionFilter("JSON", "json"));
                 if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
                     File file = f.getSelectedFile();
-                    lock();
-                    Main.getTaskManager().execute(() -> {
-                        node.saveTree(file);
-                        unlock();
-                    });
+                    node.run(new Task(file));
                 }
             }
         }
     }
 
-    class SaveCube extends AbstractAction {
+    class SaveCube extends Save {
+
+        class Task extends Save.Task {
+
+            private final int res;
+            private final String format;
+            private final String archiver;
+
+            Task(int res, File file, String format, String archiver) {
+                super(file);
+                this.res = res;
+                this.format = format;
+                this.archiver = archiver;
+            }
+
+            @Override
+            public Void doInBackground() {
+                Perlin.setRes(res);
+                node.emptyDown();
+                node.saveCube(file, format, archiver);
+                Perlin.setRes(PRE + 1);
+                node.renderImage();
+                return null;
+            }
+         }
 
         SaveCube() {
             super("Save cube");
@@ -357,14 +425,13 @@ public final class Output extends XPanel {
                     f.setFileFilter(filter);
 
                     if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
+                        int res = Integer.valueOf(g1.getActionCommand());
                         File file = f.getSelectedFile();
                         String format = g2.getActionCommand().toLowerCase();
                         if (file.getName().matches("[^.]*")) {
                             file.renameTo(new File(file.getAbsolutePath() + "." + archiver));
                         }
-
-                        int res = Integer.valueOf(g1.getActionCommand());
-                        node.saveCube(res, file, format, archiver);
+                        node.run(new Task(res, file, format, archiver));
                     }
                 }
             }

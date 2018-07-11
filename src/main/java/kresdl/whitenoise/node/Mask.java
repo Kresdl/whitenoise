@@ -1,6 +1,5 @@
 package kresdl.whitenoise.node;
 
-import java.io.Serializable;
 import kresdl.utilities.Misc;
 import kresdl.whitenoise.App;
 import kresdl.whitenoise.Main;
@@ -11,7 +10,7 @@ import kresdl.whitenoise.socket.Out;
 @SuppressWarnings("serial")
 public final class Mask extends Modifier {
 
-    public static class Info extends Node.Info implements Serializable {
+    public static class Info extends Node.Info {
 
         Info(int x, int y) {
             super(x, y);

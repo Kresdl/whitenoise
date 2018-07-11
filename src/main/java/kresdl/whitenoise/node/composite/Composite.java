@@ -1,6 +1,5 @@
 package kresdl.whitenoise.node.composite;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -14,7 +13,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -49,7 +47,7 @@ import kresdl.whitenoise.node.Node;
 import kresdl.whitenoise.node.Transform;
 import kresdl.whitenoise.node.View;
 import kresdl.whitenoise.node.composite.Output.Mode;
-import static kresdl.whitenoise.node.composite.Output.PRE;
+import kresdl.whitenoise.node.composite.Output.Save.Task;
 import kresdl.whitenoise.node.perlin.Perlin;
 import kresdl.whitenoise.socket.In;
 
@@ -98,38 +96,7 @@ public final class Composite extends Node implements View {
         }
     }
     
-    private abstract class Work extends SwingWorker<Void, Void> {
-       void updateProgress(double progress) {
-            setProgress((int) (100 * progress));
-        }        
-    }
-
-    private class CubeWork extends Work {
-
-        private final int res;
-        private final File file;
-        private final String format;
-        private final String archiver;
-
-        private CubeWork(int res, File file, String format, String archiver) {
-            this.res = res;
-            this.file = file;
-            this.format = format;
-            this.archiver = archiver;
-        }
-
-        @Override
-        public Void doInBackground() {
-            Perlin.setRes(res);
-            emptyDown();
-            saveCube(file, format, archiver);
-            Perlin.setRes(PRE + 1);
-            renderImage();
-            return null;
-        }
-     }
-
-    public static class Info extends Node.Info implements Serializable {
+    public static class Info extends Node.Info {
 
         public Gradient g;
         public double f;
@@ -145,7 +112,7 @@ public final class Composite extends Node implements View {
 
     private final Output output;
     private final Controls ctrl;
-    private static Work work;
+    private static Output.Save.Task work;
 
     public static Composite create(int x, int y, Main main, Gradient g, double distribution, Mode mode) {
         Composite n = new Composite(x, y, main, g, distribution, mode);
@@ -169,12 +136,12 @@ public final class Composite extends Node implements View {
         };
         updateEditorVisibility(mode);
     }
-
-    public void saveCube(int res, File file, String format, String archiver) {
-        work = new CubeWork(res, file, format, archiver);
+    
+    public void run(Output.Save.Task task) {
+        work = task;
         work.addPropertyChangeListener(new Progress());
         lock();
-        Main.getTaskManager().execute(work);
+        Main.getTaskManager().execute(work);        
     }
  
     final void updateEditorVisibility(Mode mode) {

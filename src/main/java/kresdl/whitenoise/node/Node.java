@@ -11,7 +11,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
@@ -32,7 +31,7 @@ import kresdl.whitenoise.socket.Socket;
 @SuppressWarnings("serial")
 public abstract class Node extends Container {
 
-    public static abstract class Info implements Serializable {
+    public static abstract class Info {
 
         public int x, y;
 

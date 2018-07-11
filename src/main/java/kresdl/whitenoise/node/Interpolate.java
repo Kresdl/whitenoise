@@ -1,7 +1,6 @@
 package kresdl.whitenoise.node;
 
 import java.awt.Component;
-import java.io.Serializable;
 import kresdl.utilities.Misc;
 import kresdl.whitenoise.App;
 import kresdl.whitenoise.Main;
@@ -13,7 +12,7 @@ import kresdl.whitenoise.socket.Out;
 @SuppressWarnings("serial")
 public final class Interpolate extends Modifier {
 
-    public static class Info extends Node.Info implements Serializable {
+    public static class Info extends Node.Info {
 
         public final double v;
 
