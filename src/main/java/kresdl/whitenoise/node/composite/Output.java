@@ -212,6 +212,7 @@ public final class Output extends XPanel {
 
             @Override
             public Void doInBackground() {
+                setProgress(100);
                 Perlin.setRes(res + 1);
                 node.emptyDown();
                 node.saveImage(file, format);
@@ -298,6 +299,7 @@ public final class Output extends XPanel {
 
             @Override
             public Void doInBackground() {
+                setProgress(100);
                 node.saveTree(file);
                 unlock();
                 return null;
