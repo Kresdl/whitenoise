@@ -12,6 +12,7 @@ import com.kresdl.whitenoise.node.Node;
 import com.kresdl.whitenoise.node.View;
 import com.kresdl.whitenoise.socket.In;
 import com.kresdl.whitenoise.socket.Out;
+import com.kresdl.whitenoise.node.composite.Output.Save.Task;
 
 @SuppressWarnings("serial")
 public final class Perlin extends Node implements View {
@@ -68,13 +69,13 @@ public final class Perlin extends Node implements View {
     }
 
     @Override
-    public void cubic(int z, Path d, String format) throws IOException {
+    public void cubic(int z, Path d, String format, Task work) throws IOException {
         int r = getRes();
         double[] data = new double[r * r];
         noise.fill(data, z);
         In link = out.getLink();
         link.send(data);
-        link.getNode().cubic(z, d, format);
+        link.getNode().cubic(z, d, format, work);
     }
 
     public static void setRes(int res) {

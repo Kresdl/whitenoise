@@ -27,6 +27,7 @@ import com.kresdl.whitenoise.node.perlin.Perlin;
 import com.kresdl.whitenoise.socket.In;
 import com.kresdl.whitenoise.socket.Out;
 import com.kresdl.whitenoise.socket.Socket;
+import com.kresdl.whitenoise.node.composite.Output.Save.Task;
 
 @SuppressWarnings("serial")
 public abstract class Node extends Container {
@@ -362,7 +363,7 @@ public abstract class Node extends Container {
 
     public abstract void save(File file, String format);
 
-    public abstract void cubic(int z, Path d, String Format) throws IOException;
+    public abstract void cubic(int z, Path d, String Format, Task work) throws IOException;
 
     public abstract Info getInfo();    
 }

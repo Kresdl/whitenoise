@@ -39,6 +39,14 @@ import com.kresdl.whitenoise.buffer.Buffer;
 import com.kresdl.whitenoise.node.Node;
 import com.kresdl.whitenoise.node.perlin.Perlin;
 import com.kresdl.xpanel.XPanel;
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import javax.swing.JDialog;
+import javax.swing.JProgressBar;
+import javax.swing.WindowConstants;
 
 @SuppressWarnings("serial")
 public final class Output extends XPanel {
@@ -46,8 +54,8 @@ public final class Output extends XPanel {
     public static enum Mode {
         BW, NORMAL, COLOR, BUMP, COLBUMP;
     }
-            
-    class Task implements Runnable {
+
+    private class Task implements Runnable {
 
         private final int i;
 
@@ -177,34 +185,85 @@ public final class Output extends XPanel {
             return Vec.nrm(new Vec(x - lgt.x, -128, lgt.y - y));
         }
     }
-    
-    static abstract class Save extends AbstractAction {
-        
-        static abstract class Task extends SwingWorker<Void, Void> {
-           protected final File file;
 
-           Task(File file) {
-               this.file = file;
-           }
+    public abstract class Save extends AbstractAction {
 
-           void updateProgress(double progress) {
+        public abstract class Task extends SwingWorker<Void, Void> {
+
+            private final class Progress extends JDialog implements PropertyChangeListener {
+
+                private final JProgressBar bar = new JProgressBar();
+
+                private Progress() {
+                    super();
+                    JPanel b = new JPanel(new BorderLayout());
+                    b.setPreferredSize(new Dimension(200, 200));
+                    JLabel lb = new JLabel("Saving...");
+                    lb.setPreferredSize(new Dimension(200, 32));
+                    lb.setHorizontalAlignment(JLabel.CENTER);
+                    lb.setVerticalAlignment(JLabel.BOTTOM);
+                    b.add(lb, BorderLayout.PAGE_START);
+                    JPanel p = new JPanel(new GridBagLayout());
+                    bar.setPreferredSize(new Dimension(150, 16));
+                    bar.setMinimum(0);
+                    bar.setMaximum(100);
+                    GridBagConstraints c = new GridBagConstraints();
+                    c.fill = GridBagConstraints.NONE;
+                    c.anchor = GridBagConstraints.CENTER;
+                    p.add(bar, c);
+                    b.add(p, BorderLayout.CENTER);
+                    setContentPane(b);
+                    setModal(true);
+                    setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+                    setUndecorated(true);
+                    setOpacity(0.75f);
+                    pack();
+                    setLocationRelativeTo(Output.this);
+                }
+
+                @Override
+                public void propertyChange(PropertyChangeEvent e) {
+                    if (e.getPropertyName().equals("progress")) {
+                        int progress = (int) e.getNewValue();
+                        bar.setValue(progress);
+                    } else {
+                        SwingWorker.StateValue state = (SwingWorker.StateValue) e.getNewValue();
+                        switch (state) {
+                            case STARTED:
+                                setVisible(true);
+                                break;
+                            case DONE:
+                                setVisible(false);
+                        }
+                    }
+                }
+            }
+            
+            final File file;
+
+            private Task(File file) {
+                this.file = file;
+                addPropertyChangeListener(new Progress());
+            }
+
+            void updateProgress(double progress) {
                 setProgress((int) (100 * progress));
-            }        
+            }
         }
-        
-        Save(String name) {
+
+        private Save(String name) {
             super(name);
         }
     }
 
-    class SaveImage extends Save {
+    private class SaveImage extends Save {
 
-        class Task extends Save.Task {
+        private class Task extends Save.Task {
 
             private final int res;
             private final String format;
 
-            Task(int res, File file, String format) {
+            private Task(File file, int res, String format) {
                 super(file);
                 this.res = res;
                 this.format = format;
@@ -222,7 +281,7 @@ public final class Output extends XPanel {
             }
         }
 
-        SaveImage() {
+        private SaveImage() {
             super("Save Image");
         }
 
@@ -282,18 +341,19 @@ public final class Output extends XPanel {
                         if (file.getName().matches("[^.]*")) {
                             file.renameTo(new File(file.getAbsolutePath() + "." + format));
                         }
-                        node.run(new Task(res, file, format));
+                        lock();
+                        Main.getTaskManager().execute(new Task(file, res, format));
                     }
                 }
             }
         }
     }
 
-    class SaveTree extends Save {
+    private class SaveTree extends Save {
 
-        class Task extends Save.Task {
+        private class Task extends Save.Task {
 
-            Task(File file) {
+            private Task(File file) {
                 super(file);
             }
 
@@ -318,21 +378,22 @@ public final class Output extends XPanel {
                 f.setFileFilter(new FileNameExtensionFilter("JSON", "json"));
                 if (f.showSaveDialog(Output.this) == JFileChooser.APPROVE_OPTION) {
                     File file = f.getSelectedFile();
-                    node.run(new Task(file));
+                    lock();
+                    Main.getTaskManager().execute(new Task(file));
                 }
             }
         }
     }
 
-    class SaveCube extends Save {
+    private class SaveCube extends Save {
 
-        class Task extends Save.Task {
+        private class Task extends Save.Task {
 
             private final int res;
             private final String format;
             private final String archiver;
 
-            Task(int res, File file, String format, String archiver) {
+            private Task(File file, int res, String format, String archiver) {
                 super(file);
                 this.res = res;
                 this.format = format;
@@ -343,14 +404,14 @@ public final class Output extends XPanel {
             public Void doInBackground() {
                 Perlin.setRes(res);
                 node.emptyDown();
-                node.saveCube(file, format, archiver);
+                node.saveCube(file, format, archiver, this);
                 Perlin.setRes(PRE + 1);
                 node.renderImage();
                 return null;
             }
-         }
+        }
 
-        SaveCube() {
+        private SaveCube() {
             super("Save cube");
         }
 
@@ -433,15 +494,15 @@ public final class Output extends XPanel {
                         if (file.getName().matches("[^.]*")) {
                             file.renameTo(new File(file.getAbsolutePath() + "." + archiver));
                         }
-                        node.run(new Task(res, file, format, archiver));
+                        lock();
+                        Main.getTaskManager().execute(new Task(file, res, format, archiver));
                     }
                 }
             }
         }
     }
 
-    public static final int PRE = App.OUT_PRE;
-
+    private static final int PRE = App.OUT_PRE;
     private final JPopupMenu pop = new JPopupMenu();
     private final Mouse mouse = new Mouse(this);
     private final Composite node;

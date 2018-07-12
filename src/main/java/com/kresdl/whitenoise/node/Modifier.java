@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 import com.kresdl.whitenoise.App;
 import com.kresdl.whitenoise.Main;
+import com.kresdl.whitenoise.node.composite.Output;
 import com.kresdl.whitenoise.node.perlin.Perlin;
 import com.kresdl.whitenoise.socket.In;
 
@@ -67,7 +68,7 @@ abstract class Modifier extends Node {
     }
 
     @Override
-    public void cubic(int z, Path d, String format) throws IOException {
+    public void cubic(int z, Path d, String format, Output.Save.Task work) throws IOException {
         if (hasData()) {
             int r = Perlin.getRes();
             dst = new double[r * r];
@@ -75,7 +76,7 @@ abstract class Modifier extends Node {
             empty();
             In link = getOut().getLink();
             link.send(dst);
-            link.getNode().cubic(z, d, format);
+            link.getNode().cubic(z, d, format, work);
         }
     }
 
