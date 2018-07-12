@@ -41,7 +41,7 @@
         <dependency>
             <groupId>com.github.kresdl</groupId>
             <artifactId>swing-gradients</artifactId>
-            <version>master-SNAPSHOT</version>
+            <version>master-SNAPSHO</version>
         </dependency>  
     </dependencies>
     <name>whitenoise</name>
