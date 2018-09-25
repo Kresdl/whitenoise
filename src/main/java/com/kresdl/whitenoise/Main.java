@@ -289,13 +289,12 @@ public final class Main extends JPanel {
     private final Mouse mouse = new Mouse(this);
     private Point pl;
     private static final Set<Node> NODES = new HashSet<>();
-    private static final TaskManager TASKMANAGER = new TaskManager(Executors.newCachedThreadPool());
+    private static final TaskManager TASKMANAGER = new TaskManager(Executors.newCachedThreadPool(r -> {
+       Thread t = new Thread(r);
+       t.setDaemon(true);
+       return t;
+    }));
 
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            TASKMANAGER.shutdown();
-        }));
-    }
 
     Main() {
         super();
